@@ -22,6 +22,11 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Theme state ─────────────────────────────────────────────────────────────────
+if "theme" not in st.session_state:
+    st.session_state["theme"] = "light"
+is_dark = st.session_state["theme"] == "dark"
+
 # ── Design tokens ──────────────────────────────────────────────────────────────
 P = dict(
     blue="#2563EB", blue_lt="rgba(37,99,235,0.12)",
@@ -31,99 +36,159 @@ P = dict(
     slate="#475569", bg="#F8FAFC", dark="#0F172A",
 )
 
-CT = dict(  # chart theme
-    template="plotly_white",
-    font=dict(family="Inter, system-ui, sans-serif", size=12, color=P["dark"]),
-    title_font=dict(size=14, color=P["dark"], family="Inter, system-ui, sans-serif"),
-    paper_bgcolor="white", plot_bgcolor="#FAFBFC",
+LEGEND_BASE = dict(
+    bgcolor="rgba(30,41,59,0.9)" if is_dark else "rgba(255,255,255,0.8)",
+    bordercolor="#334155"        if is_dark else "#E2E8F0",
+    borderwidth=1, font_size=11,
+)
+CT = dict(  # chart theme — no 'legend' key; pass LEGEND_BASE per chart
+    template="plotly_dark" if is_dark else "plotly_white",
+    font=dict(family="Inter, system-ui, sans-serif", size=12,
+              color="#E2E8F0" if is_dark else P["dark"]),
+    title_font=dict(size=14, family="Inter, system-ui, sans-serif",
+                    color="#F1F5F9" if is_dark else P["dark"]),
+    paper_bgcolor="#1E293B" if is_dark else "white",
+    plot_bgcolor="#0F172A"  if is_dark else "#FAFBFC",
     margin=dict(l=55, r=25, t=55, b=55),
-    legend=dict(bgcolor="rgba(255,255,255,0.8)", bordercolor="#E2E8F0",
-                borderwidth=1, font_size=11),
 )
 
 # ── CSS ────────────────────────────────────────────────────────────────────────
-st.markdown("""
+_dark_css = """
+  /* ─ Dark mode overrides ─ */
+  .stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"],
+  .main,.block-container{background-color:#0f172a !important}
+  .stMarkdown p,.stMarkdown li{color:#cbd5e1 !important}
+  h1,h2,h3,h4{color:#f1f5f9 !important}
+  .ds-card{background:#1e293b !important;border-color:#334155 !important;
+    border-left-color:#3b82f6 !important}
+  .ds-card h3{color:#93c5fd !important}
+  .ds-card p,.ds-card .meta{color:#cbd5e1 !important}
+  .ds-card .meta b{color:#60a5fa !important}
+  .tag{background:#1e3a5f !important;color:#93c5fd !important}
+  .kpi{background:#1e293b !important;border-color:#334155 !important}
+  .kpi-val{color:#f1f5f9 !important}
+  .kpi-lbl{color:#94a3b8 !important}
+  .ibox{background:#052e16 !important;border-color:#166534 !important;
+    color:#d1fae5 !important}
+  .ibox b{color:#6ee7b7 !important}
+  .wbox{background:#451a03 !important;border-color:#92400e !important;
+    color:#fef3c7 !important}
+  .sh{color:#e2e8f0 !important;border-bottom-color:#334155 !important}
+  .stTabs [data-baseweb="tab-list"]{background:#1e293b !important}
+  .stTabs [data-baseweb="tab"]{color:#94a3b8 !important}
+  .stTabs [aria-selected="true"]{background:#0f172a !important;
+    color:#60a5fa !important}
+  .stDataFrame thead tr th{background:#1e293b !important;color:#e2e8f0 !important}
+  .stDataFrame tbody tr td{color:#cbd5e1 !important;background:#0f172a !important}
+  code{background:#1e293b !important;color:#93c5fd !important}
+""" if is_dark else ""
+
+st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-html,body,[class*="css"]{font-family:'Inter',system-ui,sans-serif}
+html,body,[class*="css"]{{font-family:'Inter',system-ui,sans-serif}}
+
+/* ─ Remove top empty space ─ */
+header[data-testid="stHeader"]{{height:0 !important;min-height:0 !important;
+  overflow:hidden;padding:0 !important}}
+[data-testid="stToolbar"]{{display:none}}
+div[data-testid="stDecoration"]{{display:none}}
+.block-container{{padding-top:0.75rem !important}}
 
 /* ─ App header ─ */
-.app-hdr{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#2563eb 100%);
-  padding:2rem 2.5rem;border-radius:16px;margin-bottom:1.5rem}
-.app-hdr h1{color:#fff;font-size:2.1rem;margin:0;font-weight:700;letter-spacing:-0.02em}
-.app-hdr p{color:#93c5fd;margin:.4rem 0 0;font-size:.95rem}
+.app-hdr{{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#2563eb 100%);
+  padding:1.2rem 2rem;border-radius:16px;margin-bottom:1rem;
+  display:flex;align-items:center;gap:1rem}}
+.app-hdr-text h1{{color:#fff;font-size:1.8rem;margin:0;font-weight:700;letter-spacing:-0.02em}}
+.app-hdr-text p{{color:#93c5fd;margin:.2rem 0 0;font-size:.88rem}}
 
 /* ─ Dataset card ─ */
-.ds-card{background:#f0f9ff;border:1px solid #bae6fd;border-left:5px solid #0284c7;
-  border-radius:12px;padding:1.3rem 1.6rem;margin-bottom:1.5rem}
-.ds-card h3{color:#0369a1;font-size:1rem;margin:0 0 .55rem;font-weight:700}
-.ds-card p{color:#374151;font-size:.87rem;line-height:1.75;margin:0 0 .7rem}
-.ds-card .meta{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:.8rem;
-  font-size:.8rem;color:#475569}
-.ds-card .meta b{color:#0369a1}
-.tag{background:#dbeafe;color:#1d4ed8;padding:.12rem .55rem;border-radius:999px;
-  font-size:.72rem;font-weight:600;display:inline-block;margin:.1rem .15rem}
+.ds-card{{background:#f0f9ff;border:1px solid #bae6fd;border-left:5px solid #0284c7;
+  border-radius:12px;padding:1.1rem 1.4rem;margin-bottom:1rem}}
+.ds-card h3{{color:#0369a1;font-size:1rem;margin:0 0 .55rem;font-weight:700}}
+.ds-card p{{color:#374151;font-size:.87rem;line-height:1.75;margin:0 0 .7rem}}
+.ds-card .meta{{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:.8rem;
+  font-size:.8rem;color:#475569}}
+.ds-card .meta b{{color:#0369a1}}
+.tag{{background:#dbeafe;color:#1d4ed8;padding:.12rem .55rem;border-radius:999px;
+  font-size:.72rem;font-weight:600;display:inline-block;margin:.1rem .15rem}}
 
 /* ─ KPI strip ─ */
-.kpi-row{display:flex;gap:10px;flex-wrap:wrap;margin:1rem 0}
-.kpi{background:#fff;border:1px solid #e5e7eb;border-radius:12px;
+.kpi-row{{display:flex;gap:10px;flex-wrap:wrap;margin:1rem 0}}
+.kpi{{background:#fff;border:1px solid #e5e7eb;border-radius:12px;
   padding:14px 16px;flex:1;min-width:130px;
-  box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.kpi-lbl{font-size:.68rem;color:#6b7280;font-weight:700;text-transform:uppercase;
-  letter-spacing:.07em}
-.kpi-val{font-size:1.5rem;font-weight:700;color:#111827;margin-top:3px}
-.kpi-sub{font-size:.76rem;margin-top:2px}
-.g{color:#059669}.r{color:#dc2626}.s{color:#6b7280}
+  box-shadow:0 1px 3px rgba(0,0,0,.06)}}
+.kpi-lbl{{font-size:.68rem;color:#6b7280;font-weight:700;text-transform:uppercase;
+  letter-spacing:.07em}}
+.kpi-val{{font-size:1.5rem;font-weight:700;color:#111827;margin-top:3px}}
+.kpi-sub{{font-size:.76rem;margin-top:2px}}
+.g{{color:#059669}}.r{{color:#dc2626}}.s{{color:#6b7280}}
 
 /* ─ Interpretation / info boxes ─ */
-.ibox{background:#f0fdf4;border:1px solid #86efac;border-left:5px solid #16a34a;
+.ibox{{background:#f0fdf4;border:1px solid #86efac;border-left:5px solid #16a34a;
   border-radius:10px;padding:1rem 1.4rem;margin:1rem 0;
-  font-size:.87rem;color:#14532d;line-height:1.75}
-.ibox b{color:#166534}
-.wbox{background:#fffbeb;border:1px solid #fcd34d;border-left:5px solid #d97706;
+  font-size:.87rem;color:#14532d;line-height:1.75}}
+.ibox b{{color:#166534}}
+.wbox{{background:#fffbeb;border:1px solid #fcd34d;border-left:5px solid #d97706;
   border-radius:10px;padding:.9rem 1.3rem;margin:.8rem 0;
-  font-size:.85rem;color:#78350f;line-height:1.7}
+  font-size:.85rem;color:#78350f;line-height:1.7}}
 
 /* ─ Section headings ─ */
-.sh{font-size:.97rem;font-weight:700;color:#1f2937;
-  border-bottom:2px solid #e5e7eb;padding-bottom:.45rem;margin:1.8rem 0 1rem}
+.sh{{font-size:.97rem;font-weight:700;color:#1f2937;
+  border-bottom:2px solid #e5e7eb;padding-bottom:.45rem;margin:1.8rem 0 1rem}}
 
 /* ─ Sidebar ─ */
-section[data-testid="stSidebar"]>div:first-child{background:#0f172a}
+section[data-testid="stSidebar"]>div:first-child{{background:#0f172a}}
 section[data-testid="stSidebar"] .stMarkdown p,
-section[data-testid="stSidebar"] .stMarkdown li{color:#cbd5e1 !important;font-size:.83rem}
+section[data-testid="stSidebar"] .stMarkdown li{{color:#cbd5e1 !important;font-size:.83rem}}
 section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3{color:#f1f5f9 !important}
-section[data-testid="stSidebar"] hr{border-color:#1e293b}
+section[data-testid="stSidebar"] h3{{color:#f1f5f9 !important}}
+section[data-testid="stSidebar"] hr{{border-color:#1e293b}}
+section[data-testid="stSidebar"] .stButton button{{
+  background:#1e293b;color:#e2e8f0;border:1px solid #334155;
+  border-radius:8px;font-size:.82rem;width:100%;padding:.45rem}}
+section[data-testid="stSidebar"] .stButton button:hover{{
+  background:#334155;border-color:#475569}}
 
 /* ─ Tabs ─ */
-.stTabs [data-baseweb="tab-list"]{background:#f1f5f9;border-radius:12px;padding:4px;gap:4px}
-.stTabs [data-baseweb="tab"]{border-radius:8px;font-weight:600;font-size:.88rem;
-  padding:9px 16px;color:#475569}
-.stTabs [aria-selected="true"]{background:#fff !important;color:#1e40af !important;
-  box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.stTabs [data-baseweb="tab-list"]{{background:#f1f5f9;border-radius:12px;padding:4px;gap:4px}}
+.stTabs [data-baseweb="tab"]{{border-radius:8px;font-weight:600;font-size:.88rem;
+  padding:9px 16px;color:#475569}}
+.stTabs [aria-selected="true"]{{background:#fff !important;color:#1e40af !important;
+  box-shadow:0 1px 4px rgba(0,0,0,.1)}}
 
 /* ─ Tables ─ */
-.stDataFrame thead tr th{background:#f8fafc !important;font-weight:700 !important;
-  color:#374151 !important;font-size:.82rem}
-.stDataFrame tbody tr td{font-size:.82rem}
+.stDataFrame thead tr th{{background:#f8fafc !important;font-weight:700 !important;
+  color:#374151 !important;font-size:.82rem}}
+.stDataFrame tbody tr td{{font-size:.82rem}}
+
+{_dark_css}
 </style>
 """, unsafe_allow_html=True)
 
 # ── App header ──────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="app-hdr">
-  <h1>🔬 BioStat Lab</h1>
-  <p>Interactive biostatistical modeling suite &nbsp;·&nbsp; Real-world datasets &nbsp;·&nbsp; All computation server-side</p>
+  <span style="font-size:2.4rem;line-height:1">🔬</span>
+  <div class="app-hdr-text">
+    <h1>BioStat Lab</h1>
+    <p>Interactive biostatistical modeling suite &nbsp;·&nbsp; Real-world datasets &nbsp;·&nbsp; All computation server-side</p>
+  </div>
 </div>""", unsafe_allow_html=True)
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("""<div style="text-align:center;padding:1.2rem 0 .5rem">
-      <span style="font-size:2.8rem">🔬</span>
-      <h2 style="color:#f1f5f9;margin:.4rem 0 0;font-size:1.25rem;font-weight:700">BioStat Lab</h2>
-      <p style="color:#64748b;font-size:.76rem;margin:.2rem 0 0">v2.0 — Real Datasets</p>
+    st.markdown("""<div style="padding:.6rem 0 .4rem">
+      <h2 style="color:#f1f5f9;margin:0;font-size:1.1rem;font-weight:700">🔬 BioStat Lab</h2>
+      <p style="color:#64748b;font-size:.73rem;margin:.15rem 0 0">v2.0 — Real Datasets</p>
     </div>""", unsafe_allow_html=True)
+
+    # Theme toggle
+    _theme_lbl = "☀️ Light Mode" if is_dark else "🌙 Dark Mode"
+    if st.button(_theme_lbl, key="theme_btn", use_container_width=True):
+        st.session_state["theme"] = "light" if is_dark else "dark"
+        st.rerun()
+
     st.markdown("---")
     st.markdown("### 📁 Datasets")
     st.markdown("""
@@ -294,7 +359,7 @@ survival analysis.</p>
             xaxis_title="Weeks since prison release",
             yaxis_title="P(not re-arrested)",
             yaxis=dict(range=[0, 1.04], tickformat=".0%"),
-            legend=dict(orientation="h", yanchor="top", y=-0.2),
+            legend=dict(**LEGEND_BASE, orientation="h", yanchor="top", y=-0.2),
             **CT, height=390,
         )
         st.plotly_chart(fig_km, use_container_width=True)
@@ -490,6 +555,7 @@ in baseline speed, independent of the sleep manipulation.
             fig_ov.update_layout(
                 title="Observed vs Fitted Values",
                 xaxis_title="Observed (ms)", yaxis_title="Fitted (ms)",
+                legend=LEGEND_BASE,
                 **CT, height=330,
             )
             st.plotly_chart(fig_ov, use_container_width=True)
@@ -517,6 +583,7 @@ in baseline speed, independent of the sleep manipulation.
                 title="Distribution of Subject Random Intercepts",
                 xaxis_title="Random Intercept (ms offset)",
                 yaxis_title="Count",
+                legend=LEGEND_BASE,
                 **CT, height=330,
             )
             st.plotly_chart(fig_re, use_container_width=True)
@@ -562,6 +629,7 @@ in baseline speed, independent of the sleep manipulation.
             title=f"Individual Reaction Time Trajectories ({n_show_subj} subjects shown)",
             xaxis_title="Days of sleep deprivation",
             yaxis_title="Reaction time (ms)",
+            legend=LEGEND_BASE,
             **CT, height=400,
         )
         st.plotly_chart(fig_tj, use_container_width=True)
@@ -676,8 +744,8 @@ experienced a greater reduction in traffic fatalities, the canonical DiD illustr
         fig_ps.update_layout(
             barmode="overlay",
             title="Propensity Score Distributions — Before and After Matching",
+            legend=dict(**LEGEND_BASE, orientation="h", yanchor="top", y=-0.2),
             **CT, height=320,
-            legend=dict(orientation="h", yanchor="top", y=-0.2),
         )
         st.plotly_chart(fig_ps, use_container_width=True)
 
@@ -718,6 +786,7 @@ experienced a greater reduction in traffic fatalities, the canonical DiD illustr
             title="Love Plot — |SMD| < 0.10 indicates good balance",
             xaxis_title="Standardised Mean Difference (SMD)",
             xaxis=dict(zeroline=False),
+            legend=LEGEND_BASE,
             **CT, height=280 + 30 * len(all_covs),
         )
         st.plotly_chart(fig_love, use_container_width=True)
@@ -932,7 +1001,7 @@ $$\tau_n^{-2} = \tau_0^{-2} + S_{xx}/\sigma^2, \quad
             title=f"Bayesian Prior → Posterior Update  (n = {n_bayes} of 442 patients)",
             xaxis_title="Slope β (= standardised effect of BMI on disease progression)",
             yaxis_title="Probability density",
-            legend=dict(orientation="h", yanchor="top", y=-0.22),
+            legend=dict(**LEGEND_BASE, orientation="h", yanchor="top", y=-0.22),
             **CT, height=390,
         )
         st.plotly_chart(fig_bay, use_container_width=True)
@@ -1000,7 +1069,7 @@ weighted by the relative precision of prior vs data.
                 title=f"BMI vs Disease Progression  (n = {n_bayes})",
                 xaxis_title="BMI (z-scored)",
                 yaxis_title="Disease progression (z-scored)",
-                legend=dict(orientation="h", yanchor="top", y=-0.25),
+                legend=dict(**LEGEND_BASE, orientation="h", yanchor="top", y=-0.25),
                 **CT, height=330,
             )
             st.plotly_chart(fig_dat, use_container_width=True)
@@ -1039,7 +1108,7 @@ weighted by the relative precision of prior vs data.
                 title="Interval Width vs Sample Size",
                 xaxis_title="Sample size n",
                 yaxis_title="95 % interval width",
-                legend=dict(orientation="h", yanchor="top", y=-0.25),
+                legend=dict(**LEGEND_BASE, orientation="h", yanchor="top", y=-0.25),
                 **CT, height=330,
             )
             st.plotly_chart(fig_n, use_container_width=True)
